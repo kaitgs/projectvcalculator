@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+    <title>PROJECT V - SCORE CALCULATOR</title>
+    <style>
+        body {
+            font-family: 'Bebas Neue', sans-serif;
+            color: rgb(245, 245, 245); /* Text color */
+            margin: 0;
+            padding: 0;
+        }
+        .sidebar {
+            width: 100%; /* Make the sidebar occupy the entire width */
+            background-image: url('bluelock.png'); /* Set the path to your background image here */
+            background-size: 25%;
+            background-repeat: repeat-y;
+            background-position: center;
+            position: relative;
+            z-index: 1; /* Keep the sidebar above the background image */
+            padding: 20px; /* Internal spacing */
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(38, 38, 38, 0.941); /* Overlay color with opacity */
+            z-index: -1; /* Place the overlay behind the sidebar */
+        }
+        .main-content {
+            padding: 20px; /* Internal spacing */
+        }
+        h1 {
+            color: rgb(255, 187, 0);
+        }
+        p {
+            color: rgb(17, 112, 49);
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+        .player-name {
+            font-size: 24px; /* Increase the font size of the player's name */
+        }
+        .score {
+            color: rgb(14, 232, 43);
+            font-size: 24px; /* Set the font size of the final score */
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="overlay"></div> <!-- Inverted color overlay -->
+        <h1>PROJECT V - SCORE CALCULATOR</h1>
+        <form id="addPlayerForm">
+            <input type="text" id="playerName" placeholder="Player name">
+            <button type="button" onclick="addPlayer()">Add player</button>
+        </form>
+        <form id="addResultsForm" style="display: none;">
+            <div id="playersData"></div>
+            <button type="button" onclick="addResults()">Add Results</button>
+        </form>
+        <h2>SCORE PER PLAYER</h2>
+        <ul id="scoreList"></ul>
+    </div>
+    <button id="saveSheetButton" style="display: none;" onclick="saveAsSheet()">Save as Sheet</button>
+    <p id="savedMessage" style="display: none;">Data saved successfully!</p>
+
+    <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+    <script>
+        let players = [];
+
+        function addPlayer() {
+            const playerName = document.getElementById('playerName').value;
+            players.push({ name: playerName, goals: 0, assists: 0, saves: 0, awards: 0, wins: 0 });
+            updatePlayersData();
+        }
+
+        function updatePlayersData() {
+            const playersDataDiv = document.getElementById('playersData');
+            playersDataDiv.innerHTML = '';
+
+            players.forEach(player => {
+                playersDataDiv.innerHTML += `
+                    <h2><span class="player-name">${player.name}</span></h2>
+                    <label>Goals: <input type="number" name="goals_${player.name}" value="0"></label><br>
+                    <label>Assists: <input type="number" name="assists_${player.name}" value="0"></label><br>
+                    <label>Saves: <input type="number" name="saves_${player.name}" value="0"></label><br>
+                    <label>Wins: <input type="number" name="wins_${player.name}" value="0"></label><br>
+                    <label>Votes: <input type="number" name="awards_${player.name}" value="0"></label><br>
+                `;
+            });
+
+            const addResultsForm = document.getElementById('addResultsForm');
+            addResultsForm.style.display = 'block';
+        }
+
+        function addResults() {
+            players.forEach(player => {
+                player.goals = parseInt(document.querySelector(`[name="goals_${player.name}"]`).value);
+                player.assists = parseInt(document.querySelector(`[name="assists_${player.name}"]`).value);
+                player.saves = parseInt(document.querySelector(`[name="saves_${player.name}"]`).value);
+                player.awards = parseInt(document.querySelector(`[name="awards_${player.name}"]`).value);
+                player.wins = parseInt(document.querySelector(`[name="wins_${player.name}"]`).value);
+            });
+
+            const scoreList = document.getElementById('scoreList');
+            scoreList.innerHTML = '';
+
+            players.forEach(player => {
+                const totalScore = (player.goals * 5) + (player.assists * 3) + (player.saves * 2) + (player.awards * 5) + (player.wins * 3);
+                scoreList.innerHTML += `<li><span class="player-name">${player.name}</span>: <span class="score">${totalScore} points</span></li>`;
+            });
+
+            const saveSheetButton = document.getElementById('saveSheetButton');
+            saveSheetButton.style.display = 'block';
+
+            const savedMessage = document.getElementById('savedMessage');
+            savedMessage.style.display = 'none'; // Oculta a mensagem ao adicionar novos resultados
+        }
+
+        function saveAsSheet() {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Players');
+
+            worksheet.columns = [
+                { header: 'Player Name', key: 'name' },
+                { header: 'Goals', key: 'goals' },
+                { header: 'Assists', key: 'assists' },
+                { header: 'Saves', key: 'saves' },
+                { header: 'Wins', key: 'wins' },
+                { header: 'Votes', key: 'awards' },
+                { header: 'Total Points', key: 'totalPoints' }
+            ];
+
+            players.forEach(player => {
+                const totalScore = (player.goals * 5) + (player.assists * 3) + (player.saves * 2) + (player.awards * 5) + (player.wins * 3);
+                worksheet.addRow({ name: player.name, goals: player.goals, assists: player.assists, saves: player.saves, wins: player.wins, awards: player.awards, totalPoints: totalScore });
+            });
+
+            workbook.xlsx.writeBuffer().then(buffer => {
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'players_scores.xlsx';
+                a.click();
+                window.URL.revokeObjectURL(url);
+
+                const savedMessage = document.getElementById('savedMessage');
+                savedMessage.style.display = 'block'; // Exibe a mensagem de salvamento bem-sucedido
+            });
+        }
+    </script>
+    <button id="saveSheetButton" style="display: none;" onclick="saveAsSheet()">Save as Sheet</button>
+    <p id="savedMessage" style="display: none;">Data saved successfully!</p>
+</body>
+</html>
